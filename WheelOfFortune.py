@@ -5,7 +5,7 @@ import random
 #Functions
 def choose_words():
     word=[]
-    word_list=open("words_alpha.txt").readlines()
+    word_list=open("words_list.txt").readlines()
     temp_his=set()
     for i in range(0,3): #Randomly choosing the 3 words that we'll use in this game
         while True:
