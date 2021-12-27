@@ -1,13 +1,15 @@
 #------------------------------------------------------------------------------------------------------------------------------------------
+#file(s) needed: words_list.txt
+#------------------------------------------------------------------------------------------------------------------------------------------
 #imports
 import random
 #------------------------------------------------------------------------------------------------------------------------------------------
 #Functions
-def choose_words():
+def choose_words(filename,num_rounds):
     word=[]
-    word_list=open("words_list.txt").readlines()
+    word_list=open(filename).readlines()
     temp_his=set()
-    for i in range(0,3): #Randomly choosing the 3 words that we'll use in this game
+    for i in range(0,num_rounds): #Randomly choosing the 3 words that we'll use in this game
         while True:
             temp=random.choice(word_list)
             if temp in temp_his:
@@ -78,41 +80,53 @@ def vowels_left(word,guess_his):
 #Initialization
 wheel=[600,500,300,500,800,550,400,300,900,500,300,900,"Bankrupt",600,400,300,"Lose A Turn",800,350,450,700,300,600,600]
 final_prize=100000 #Stretch Goal: Change to be randomly chosen from a list
-bank=[0,0,0] #Player 1, 2, 3 permanent bank
-temp_bank=[0,0,0] #Player 1, 2, 3 round bank
+num_players=3
+num_rounds=3 #Including the final round
+min_round_prize=1000 #The minimum prize won in a round is $1000
+round=0 #Tracks round number, starting from 0
 guess_his=set()
-active=random.randint(0,2) #Tracks the active player
-word=choose_words() #This decides what the three words are going to be this game!
-round=0 #Tracks round number
+player=[] #Player list of dictionaries
+for i in range(0,num_players):
+    player.append({"name":"", "bank":0, "round_bank":0})
+active=random.randint(0,2) #Tracks the active player, randomizes who the first player will be
+word=choose_words("words_list.txt",num_rounds) #This decides what the three words are going to be this game! Stretch Goal: Import in real prompts
+#------------------------------------------------------------------------------------------------------------------------------------------
 print("(To make it easier on the graders when they are testing the game)") #DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=
 print(word) #DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=DELETEME=
 #------------------------------------------------------------------------------------------------------------------------------------------
-print("\nWelcome to Wheel of Fortune!")
-while round<2:
-    input("\nIt is currently Player {0}'s turn! (Enter to continue) ".format(active+1))
+#The Game itself
+print("\nWelcome to Wheel of Fortune!\n")
+for i in  range(0,num_players): #Inputs player names
+    player[i].update({"name":input("What is the name of Player {0}?: ".format(i+1))})
+while round<num_rounds-1:
+    input("\nIt is currently {0}'s turn! (Enter to continue) ".format(player[active]["name"]))
     display_word(word[round],guess_his)
-    while True: #Player's Gameplay
+    while True: #Player's Turn
         if y_n_input("Would you like to guess the word? (y/n): "): #Guess word
             guess=input("Guess the word: ").lower()
             if guess==word[round]: #Round ending!
-                print("That is correct! The round is over!")
-                bank[active]+=temp_bank[active] #Only the winner of the round gets to keep the money they earned during the round (as per the rules stated during standup 12/23/21)
+                print("That is correct! The round is over!\n")
+                if player[active]["round_bank"]>min_round_prize:
+                    player[active]["bank"]+=player[active]["round_bank"]
+                else:
+                    player[active]["bank"]+=min_round_prize #Minimum price won is $1000
                 round+=1
                 guess_his=set()
-                temp_bank=[0,0,0]
-                print("\nPlayer 1 has ${0}, Player 2 has ${1}, and Player 3 has ${2}".format(bank[0],bank[1],bank[2]))
-                print("We will return for round {0} after THIS commercial break...\n".format(round+1))
+                for i in range(0,num_players):
+                    player[i].update({"round_bank":0})
+                    print("{0} has ${1}".format(player[i]["name"],player[i]["bank"]))
+                print("\nWe will return for round {0} after THIS commercial break...\n".format(round+1))
                 break
             else:
                 print("That is not correct.")
                 break
         else: #Spin wheel
-            input("\nSPIN THE WHEEL!\n") 
+            input("\nSPIN THE WHEEL!\n") #This is to give a better user experience to enter something to spin the wheel.
             wheel_active=wheel[random.randint(0,len(wheel)-1)]
             print("The wheel landed on: {0}".format(wheel_active))
             if wheel_active=="Bankrupt":
                 print("Oh No!")
-                temp_bank[active]=0
+                player[active].update({"round_bank":0})
                 break
             elif wheel_active=="Lose A Turn":
                 print("Tough luck!")
@@ -122,17 +136,17 @@ while round<2:
                 guess_his.add(guess)
                 num_letters=letter_check(word[round],guess,guess_his)
                 if num_letters!=0:
-                    temp_bank[active]+=num_letters*wheel_active
+                    player[active]["round_bank"]+=num_letters*wheel_active
                     display_word(word[round],guess_his)
                     while True: #Buy a vowel loop
-                        print("You currently have ${0} (this round)!".format(temp_bank[active]))         
+                        print("You currently have ${0} (this round)!".format(player[active]["round_bank"]))         
                         if vowels_left(word[round],guess_his):
-                            if temp_bank[active]>=250:
+                            if player[active]["round_bank"]>=250:
                                 if y_n_input("Would you like to buy a vowel? (y/n): "):
-                                    temp_bank[active]-=250
+                                    player[active]["round_bank"]-=250
                                     guess=vowel_input(guess_his)
                                     guess_his.add(guess)
-                                    if letter_check(word[round],guess,guess_his)==0: #Do you lose your turn if there are no vowels, or just are unable to buy another vowel? I assumed the latter. Rubric/assignment unclear
+                                    if letter_check(word[round],guess,guess_his)==0: #Do you lose your turn if there are no vowels, or just are unable to buy another vowel without spinning again? I assumed the latter. Rubric/assignment unclear
                                         break
                                     else:
                                         display_word(word[round],guess_his)   
@@ -145,22 +159,34 @@ while round<2:
                             break
                 else:
                     break
-    #Turn ended
+    #Player Turn ended
     if active<2:
-        active+=1
+        active+=1 
     else:
         active=0
 else: #Final Round
-    if len(set(bank))==len(bank): #There is no tie
-        active=bank.index(max(bank))
-    else: #There is a tie
-        winners=[]
-        for i in range(0,len(bank)):
-            if bank[i]==max(bank):
-                winners.append(i)
-        active=random.choice(winners)
-    print("\nWelcome to the Final Round!")
-    input("Because they had the most money, it is Player {0}'s turn! (Enter to continue) ".format(active+1))
+    print("\nWelcome to the Final Round!")  
+
+    #Determine Final Player
+    max_bank=0
+    top_players=[]
+    for i in range(0,len(player)):
+        if player[i]["bank"]>max_bank:
+            max_bank=player[i]["bank"]
+            tie=False
+            top_players.clear()
+            top_players.append(i)
+        elif player[i]["bank"]==max_bank:
+            tie=True
+            top_players.append(i)
+    if tie:
+        active=random.choice(top_players)
+        input("Because they tied for the most money (and were more fortunate), it is {0}'s turn! (Enter to continue) ".format(player[active]["name"]))
+    else:
+        active=top_players[0]
+        input("Because they had the most money, it is {0}'s turn! (Enter to continue) ".format(player[active]["name"]))
+
+    #Final Round Mechanics
     display_word(word[round],guess_his)
     print("\nAnd R, S, T, L, N, E")
     guess_his.update('r','s','t','l','n','e')
@@ -173,9 +199,10 @@ else: #Final Round
     display_word(word[round],guess_his)
     guess=input("You get one guess!: ").lower()
     if guess==word[round]:
-        print("That is correct! You won an additional...\n${0}!".format(final_prize))
-        bank[active]+=final_prize
+        print("That is correct! You won an additional...\n${0}!\n".format(final_prize))
+        player[active]["bank"]+=final_prize
     else:
-        print("That is not correct. You, unfortunately, missed out on ${0}".format(final_prize))
-print("\nPlayer 1 ended with ${0}, Player 2 ended with ${1}, and Player 3 ended with ${2}".format(bank[0],bank[1],bank[2]))
+        print("That is not correct. You, unfortunately, missed out on ${0}.\n".format(final_prize))
+for i in range(0,num_players):
+    print("{0} has ended with ${1}".format(player[i]["name"],player[i]["bank"]))
 print("Thanks for playing!")
